@@ -646,3 +646,83 @@ print(f"Public Housing Correlation: {housing_corr:.3f}")
 
 else:
     st.warning("Unable to load data. Please check file paths and data availability.")
+
+# Sidebar - Citation and Credits
+with st.sidebar:
+    st.markdown("---")
+    
+    # Citation Section
+    st.subheader("📖 Citation")
+    st.markdown("**Srijan Chaudhary** (530754176)")
+    
+    # Academic Citation
+    st.markdown("**Academic Citation:**")
+    citation_text = """```
+@misc{Srijan Chaudhary,
+  title = {🔗 Sydney COVID-19 Three-Way Impact Analysis},
+  year = {2025},
+  publisher = {GitHub},
+  howpublished = {\\url{https://github.com/5rijan/WDAC}},
+}
+```"""
+    st.markdown(citation_text)
+    
+    # GitHub Repository Button
+    st.markdown("**📂 Dataset & Code:**")
+    if st.button("🔗 View GitHub Repository", use_container_width=True, type="primary"):
+        st.markdown("**Repository:** [https://github.com/5rijan/WDAC](https://github.com/5rijan/WDAC)")
+        st.balloons()
+    
+    st.markdown("---")
+    
+    # References and Credits
+    st.subheader("📚 References & Credits")
+    
+    st.markdown("**🏛️ Data Sources:**")
+    st.markdown("""
+    • **Australian Bureau of Statistics**
+      - COVID-19 case data
+      - Population statistics
+    
+    • **NSW Open Data**
+      - Opal patronage data
+      - Train station information
+      - Transport routes
+    
+    • **Transport for NSW**
+      - Public transport usage data
+      - Station entrance locations
+    """)
+    
+    st.markdown("**🔗 Specific Datasets:**")
+    st.markdown("""
+    • [Opal Patronage Data](https://opendata.transport.nsw.gov.au/data/dataset/opal-patronage)
+    • [Train Station Data](https://opendata.transport.nsw.gov.au/data/dataset/train-station-entrance-locations)
+    • [Sydney Train Routes](https://opendata.transport.nsw.gov.au/data/dataset/sydney-train-routes)
+    • [NSW COVID-19 Cases](https://data.nsw.gov.au/)
+    """)
+    
+    st.markdown("---")
+    
+    # Technical Information
+    st.subheader("⚙️ Technical Details")
+    st.markdown("""
+    **Built with:**
+    • Python 3.11+
+    • Streamlit
+    • Plotly
+    • Pandas
+    • NumPy
+    
+    **Analysis Period:**
+    2020-2022 (3 years)
+    
+    **Data Volume:**
+    • 973,412 COVID cases
+    • 2M+ transport records
+    • 421 Sydney suburbs
+    """)
+    
+    st.markdown("---")
+    st.markdown("*Winter Data Analysis Challenge 2025*")
+    st.markdown("*Sydney Precision Data Science Centre*")
