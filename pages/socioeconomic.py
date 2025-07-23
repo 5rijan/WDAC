@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import seaborn as sns
 import matplotlib.pyplot as plt
+import os
 
 # Page configuration
 st.set_page_config(page_title="Sydney COVID-19 Socioeconomic Analysis", layout="wide", page_icon="📊")
@@ -15,12 +16,31 @@ st.title("Sydney COVID-19 Socioeconomic Impact Analysis")
 st.markdown("**A comprehensive analysis of the relationship between socioeconomic factors and COVID-19 transmission in Sydney suburbs**")
 st.divider()
 
-# Load and process data function - EXACTLY following your actual analysis
+# Load and process data function - with enhanced error handling
 @st.cache_data
 def load_and_process_data():
-    # Load datasets exactly as in your notebook - CORRECTED file paths
-    financial_data = pd.read_csv('AustraliaSpecificData/Sydney Suburbs Reviews.csv')
-    covid_data = pd.read_csv('AustraliaSpecificData/confirmed_cases_table1_location.csv')
+    try:
+        # Load datasets with file existence checks
+        financial_file = 'AustraliaSpecificData/Sydney Suburbs Reviews.csv'
+        covid_file = 'AustraliaSpecificData/confirmed_cases_table1_location.csv'
+        
+        if not os.path.exists(financial_file):
+            st.error(f"Financial data file not found: {financial_file}")
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+            
+        if not os.path.exists(covid_file):
+            st.error(f"COVID data file not found: {covid_file}")
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        
+        financial_data = pd.read_csv(financial_file)
+        covid_data = pd.read_csv(covid_file)
+        
+        st.info(f"✅ Financial data loaded: {len(financial_data)} records")
+        st.info(f"✅ COVID data loaded: {len(covid_data)} records")
+        
+    except Exception as e:
+        st.error(f"Error loading data files: {e}")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     
     # Clean financial data - EXACT same process as your analysis
     financial_clean = financial_data.copy()
@@ -61,9 +81,25 @@ def load_and_process_data():
     covid_peak_year = covid_peak.loc[covid_peak.groupby('postcode')['cases'].idxmax()]
     covid_peak_year = covid_peak_year.rename(columns={'year': 'peak_year', 'cases': 'peak_year_cases'})
     
+    # Debug: Check data before merging
+    st.info(f"📊 COVID data aggregated: {len(covid_total)} unique postcodes")
+    st.info(f"📊 Financial data: {len(financial_clean)} suburbs")
+    
     # Ensure postcode data types are consistent for merging - CRITICAL FIX
     covid_total['postcode'] = covid_total['postcode'].astype(str)
     financial_clean['Postcode'] = financial_clean['Postcode'].astype(str)
+    
+    # Debug: Check postcode overlap
+    covid_postcodes = set(covid_total['postcode'].unique())
+    financial_postcodes = set(financial_clean['Postcode'].unique())
+    overlap = covid_postcodes & financial_postcodes
+    st.info(f"🔗 Postcode overlap: {len(overlap)} matching postcodes")
+    
+    if len(overlap) == 0:
+        st.error("❌ No matching postcodes found between datasets!")
+        st.write("Sample COVID postcodes:", list(covid_postcodes)[:10])
+        st.write("Sample Financial postcodes:", list(financial_postcodes)[:10])
+        return pd.DataFrame(), covid_clean, financial_data, covid_data
     
     # Merge datasets on postcode - EXACT same process as your analysis
     merged_data = financial_clean.merge(
@@ -72,6 +108,13 @@ def load_and_process_data():
         right_on='postcode', 
         how='inner'
     )
+    
+    st.info(f"✅ Merged data: {len(merged_data)} records after joining")
+    
+    # Check if merged data is empty
+    if len(merged_data) == 0:
+        st.error("❌ Merged dataset is empty! Check postcode matching.")
+        return pd.DataFrame(), covid_clean, financial_data, covid_data
     
     # Add peak year information
     merged_data = merged_data.merge(
@@ -96,26 +139,65 @@ def load_and_process_data():
     # Create wealth indicator (inverse of affordability - higher means less affordable/wealthier area)
     merged_data['wealth_indicator'] = 10 - merged_data['affordability_score']
     
-    # Create wealth categories for analysis
-    merged_data['wealth_category'] = pd.cut(merged_data['Median House Price (2021)'], 
-                                           bins=3, labels=['Lower Price', 'Medium Price', 'Higher Price'])
+    # Create wealth categories for analysis - with safety checks
+    house_price_col = 'Median House Price (2021)'
+    if house_price_col in merged_data.columns:
+        # Check if we have valid house price data
+        valid_prices = merged_data[house_price_col].dropna()
+        st.info(f"💰 Valid house prices: {len(valid_prices)} out of {len(merged_data)} records")
+        
+        if len(valid_prices) > 0:
+            try:
+                merged_data['wealth_category'] = pd.cut(
+                    merged_data[house_price_col], 
+                    bins=3, 
+                    labels=['Lower Price', 'Medium Price', 'Higher Price']
+                )
+                st.info("✅ Wealth categories created successfully")
+            except Exception as e:
+                st.warning(f"⚠️ Could not create wealth categories: {e}")
+                # Create a default category
+                merged_data['wealth_category'] = 'Unknown'
+        else:
+            st.warning("⚠️ No valid house price data found, using default categories")
+            merged_data['wealth_category'] = 'Unknown'
+    else:
+        st.warning(f"⚠️ Column '{house_price_col}' not found in merged data")
+        merged_data['wealth_category'] = 'Unknown'
+    
+    st.info(f"🎯 Final merged dataset: {len(merged_data)} records ready for analysis")
     
     return merged_data, covid_clean, financial_data, covid_data
 
-# Load data
+# Load data with comprehensive error handling
 try:
     merged_data, covid_clean, financial_data, covid_data = load_and_process_data()
-    data_loaded = True
+    
+    # Check if we got valid data back
+    if len(merged_data) > 0:
+        data_loaded = True
+        st.success(f"✅ Data successfully loaded and processed! {len(merged_data)} records ready for analysis.")
+    else:
+        data_loaded = False
+        st.error("❌ Data loading resulted in empty dataset")
+        st.info("This could be due to:")
+        st.info("• No matching postcodes between COVID and financial datasets")
+        st.info("• Data cleaning removed all valid records")
+        st.info("• File format or encoding issues")
+        
 except FileNotFoundError as e:
     st.error(f"Data file not found: {e}")
     st.info("Please ensure the data files are in the correct directory:")
     st.info("- AustraliaSpecificData/Sydney Suburbs Reviews.csv")
     st.info("- AustraliaSpecificData/confirmed_cases_table1_location.csv")
     data_loaded = False
+    merged_data = pd.DataFrame()
 except Exception as e:
     st.error(f"Error loading data: {e}")
     st.info("Please check the data file formats and column names.")
+    st.info("Debug info will be shown above to help identify the issue.")
     data_loaded = False
+    merged_data = pd.DataFrame()
 
 if data_loaded:
     # Overview Section
