@@ -66,11 +66,35 @@ def load_and_process_data():
     financial_clean['Population (rounded)*'] = financial_clean['Population (rounded)*'].astype(str).str.replace(',', '')
     financial_clean['Population (rounded)*'] = pd.to_numeric(financial_clean['Population (rounded)*'], errors='coerce')
     
-    # Clean COVID data - EXACT same process as your analysis
+    # Clean COVID data - with postcode cleaning (CRITICAL FIX)
+    def clean_postcode_safe(x):
+        """Safely clean postcode values, handling various edge cases"""
+        if pd.isna(x):
+            return ''
+        
+        # Convert to string first
+        x_str = str(x).strip()
+        
+        # Handle various 'None' representations
+        if x_str.lower() in ['none', 'null', 'nan', '']:
+            return ''
+        
+        try:
+            # Try to convert to float then int then string (removes .0 suffix)
+            return str(int(float(x_str)))
+        except (ValueError, TypeError):
+            # If conversion fails, return empty string
+            return ''
+    
     covid_clean = covid_data.copy()
     covid_clean['notification_date'] = pd.to_datetime(covid_clean['notification_date'])
     covid_clean['year'] = covid_clean['notification_date'].dt.year
     covid_clean['month'] = covid_clean['notification_date'].dt.month
+    
+    # CRITICAL: Clean postcodes to remove .0 suffix and handle 'None' values
+    st.info("🧹 Cleaning COVID postcodes...")
+    covid_clean['postcode'] = covid_clean['postcode'].apply(clean_postcode_safe)
+    st.info(f"📮 Sample cleaned COVID postcodes: {covid_clean['postcode'].dropna().unique()[:10].tolist()}")
     
     # Aggregate COVID cases by postcode and year (following your analysis)
     covid_yearly = covid_clean.groupby(['postcode', 'year']).size().reset_index(name='total_cases')
